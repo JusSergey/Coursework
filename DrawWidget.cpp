@@ -7,6 +7,7 @@ DrawWidget::DrawWidget(QWidget *parent) : QWidget(parent),
     selectIn(0),
     selectTo(0)
 {
+    installEventFilter(this);
 }
 
 void DrawWidget::setAudioBufferList(const AudioBuffersSimple &abuff)
@@ -130,12 +131,12 @@ void DrawWidget::paintEvent(QPaintEvent *event)
     }
 }
 
-void DrawWidget::keyPressEvent(QKeyEvent *event)
-{
-    if (event->key() == Qt::Key::Key_Space) {
-        qDebug() << "Press Enter";
-    }
-}
+//void DrawWidget::keyPressEvent(QKeyEvent *event)
+//{
+//    if (event->key() == Qt::Key::Key_Space) {
+//        qDebug() << "Press Enter";
+//    }
+//}
 
 void DrawWidget::mousePressEvent(QMouseEvent *event)
 {

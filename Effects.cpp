@@ -239,3 +239,82 @@ void Effects::Sinosyde(AudioBuffersSimple &buffer, float force, float ampl, floa
         value = (value * scale + value * (1.0 - force)) * ampl;
     }, buffer, in, to);
 }
+
+void resizing(AudioBuffersSimple &buffer, std::function<bool (size_t a, size_t b, size_t c, size_t d)> cmp, real in, real to) {
+    in = in < 0 ? 0 : in;
+
+
+    size_t g = 0;
+
+    AudioBuffersSimple sim;
+
+    in *= buffer.front().format().channelCount();
+    to *= buffer.front().format().channelCount();
+
+    for (auto &ab : buffer) {
+
+        value_t *arr = (value_t *)ab.data();
+        size_t size = ab.byteCount() / sizeof(value_t);
+
+        if (cmp(g+size, in, g, to))
+            sim.push_back(ab);
+
+        else {
+            std::vector<value_t> rs;
+            rs.reserve(size);
+
+            for (size_t i = 0; i < size; ++i)
+                if (cmp(g+i, in, g+i, to))
+                    rs.push_back(arr[i]);
+
+            if (!rs.empty())
+                sim.push_back(QAudioBuffer(QByteArray((const char *)rs.data(), rs.size()*sizeof(value_t)), ab.format()));
+
+        }
+        g += size;
+    }
+
+    buffer = std::move(sim);
+}
+
+void Effects::Cut(AudioBuffersSimple &buffer, real in, real to)
+{
+    resizing(buffer, [](size_t a, size_t b, size_t c, size_t d){ return (a < b || c > d); }, in, to);
+//    size_t g = 0;
+
+//    AudioBuffersSimple sim;
+
+//    in *= buffer.front().format().channelCount();
+//    to *= buffer.front().format().channelCount();
+
+//    for (auto &ab : buffer) {
+
+//        value_t *arr = (value_t *)ab.data();
+//        size_t size = ab.byteCount() / sizeof(value_t);
+
+//        if (g + size < in || g > to)
+//            sim.push_back(ab);
+
+//        else {
+
+//            std::vector<value_t> rs;
+//            rs.reserve(size);
+
+//            for (size_t i = 0; i < size; ++i)
+//                if ((g+i) < in || (g+i) > to)
+//                    rs.push_back(arr[i]);
+
+//            if (!rs.empty())
+//                sim.push_back(QAudioBuffer(QByteArray((const char *)rs.data(), rs.size()*sizeof(value_t)), ab.format()));
+
+//        }
+//        g += size;
+//    }
+
+//    buffer = std::move(sim);
+}
+
+void Effects::Crop(AudioBuffersSimple &buffer, real in, real to)
+{
+    resizing(buffer, [](size_t a, size_t b, size_t c, size_t d){ return a >= b && c <= d; }, in, to);
+}

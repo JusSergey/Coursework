@@ -30,7 +30,8 @@ SOURCES += main.cpp\
     DirectorView.cpp \
     Effects.cpp \
     SettingEffect.cpp \
-    AudioUtilityes.cpp
+    AudioUtilityes.cpp \
+    PlayerWindow.cpp
 
 HEADERS  += MainWidget.h \
     DrawWidget.h \
@@ -38,6 +39,10 @@ HEADERS  += MainWidget.h \
     DirectorView.h \
     Effects.h \
     SettingEffect.h \
-    AudioUtilityes.h
+    AudioUtilityes.h \
+    PlayerWindow.h
 
 FORMS +=
+
+RESOURCES += \
+    iconforbuttons.qrc

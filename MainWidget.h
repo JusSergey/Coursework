@@ -6,30 +6,7 @@
 #include "DrawWidget.h"
 #include "DirectorView.h"
 #include "AudioUtilityes.h"
-
-struct WaveHead {
-    static const constexpr size_t lenstr = 4;
-
-    char chunkId [lenstr];
-
-    __uint32_t chunkSize;
-
-    char format[lenstr];
-    char subchunk1Id[lenstr];
-
-    __uint32_t subchunk1Size;
-    __uint16_t audioFormat;
-    __uint16_t numChannels;
-    __uint32_t sampleRate;
-    __uint32_t byteRate;
-    __uint16_t blockAlign;
-    __uint16_t bitsPerSample;
-
-    char subchunk2Id[lenstr];
-
-    __uint32_t subchunk2Size;
-
-};
+#include "PlayerWindow.h"
 
 class MainWidget : public QMainWindow
 {
@@ -43,11 +20,18 @@ private:
     QAudioDecoder *decoder;
     DrawWidget *drawView;
     DirectorView *directorView;
+    PlayerWindow *player;
     QMenuBar *menu;
 
-    AudioBuffersSimple readfile;
+    AudioBuffers readfile;
     size_t readfilesize;
     QString fpath;
+    QList<QAction *> mActions;
+
+protected:
+    virtual bool eventFilter(QObject *watched, QEvent *event);
+    virtual void dragEnterEvent(QDragEnterEvent *event);
+    virtual void dropEvent(QDropEvent *event);
 
 private slots:
     // File Action Slots
@@ -59,8 +43,9 @@ private slots:
     // Menu Slots
     void slotOpen();
     void slotSave();
+    void slotSaveAs();
     void slotClose();
-    void slotExit();
+    void slotPlayer();
 
     // Listener Slots Navigator
     void slotChangeScaleW(float scale);
@@ -74,6 +59,8 @@ private slots:
     void slotReversX();
     void slotNoiseLog();
     void slotSinosyde();
+    void slotCut();
+    void slotCrop();
 
     // Ext Slots
     void slotAcceptNormalize(bool isAllFile, std::map<QString, float> values);
@@ -85,9 +72,11 @@ private slots:
     void slotAcceptSinosyde(bool isAllFile, std::map<QString, float> values);
 
 private:
+    void saveForPlayer();
+    void openFile(QString path);
+    void saveFile(QString path);
     void initMenuBar();
     void setEnableAction(QString action, bool enable);
-    WaveHead getHeadForFile(const AudioBuffersSimple &buffer);
 };
 
 #endif // MAINWIDGET_H

@@ -28,7 +28,7 @@ public:
     
 protected:
     virtual void paintEvent(QPaintEvent *event);
-    virtual void keyPressEvent(QKeyEvent *event);
+//    virtual void keyPressEvent(QKeyEvent *event);
 //    void keyPressEvent(QKeyEvent *event);
 
 private:

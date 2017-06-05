@@ -2,12 +2,16 @@
 #include "SettingEffect.h"
 #include "Effects.h"
 
+constexpr auto FOR_PLAYER_SOURCE = "ForPlayer.wav";
+
+constexpr auto MENU_FILE = "Файл";
 constexpr auto OPEN  = "Відкрити";
 constexpr auto CLOSE = "Закрити";
 constexpr auto SAVE  = "Зберегти";
-constexpr auto EXIT  = "Вийти";
-
+constexpr auto SAVE_AS = "Зберегти як...";
 constexpr auto EDITOR = "Редактор";
+constexpr auto PLAYER = "Плеєр";
+
 
 constexpr auto NORMALIZE = "Нормалізація";
 constexpr auto FADE_OUT  = "Затухання";
@@ -17,35 +21,21 @@ constexpr auto REVERS_X  = "Реверс X";
 
 constexpr auto NOISE_LOG = "Шум";
 constexpr auto SINOSYDE  = "Синус";
+constexpr auto CUT       = "Вирізати";
+constexpr auto CROP      = "Обрізати";
 
 constexpr auto FORCE = "Сила";
 constexpr auto HZ = "Частота";
 constexpr auto AMPLITUDE = "Амплітуда";
 
-enum MENU_BAR {
-    Undefined, Open, Close, Save, Exit
-};
-
-MENU_BAR getEnum(const QString &name) {
-
-    if (OPEN == name)
-        return MENU_BAR::Open;
-
-    else if (CLOSE == name)
-        return MENU_BAR::Close;
-
-    else if (SAVE == name)
-        return MENU_BAR::Save;
-
-    else if (EXIT == name)
-        return MENU_BAR::Exit;
-
-    return MENU_BAR::Undefined;
+QString getPlayerFilePath() {
+    return QApplication::applicationDirPath() + FOR_PLAYER_SOURCE;
 }
 
 MainWidget::MainWidget(QWidget *parent)
     : QMainWindow(parent),
-      readfilesize(0)
+      readfilesize(0),
+      player(new PlayerWindow)
 {
     initMenuBar();
 
@@ -77,12 +67,52 @@ MainWidget::MainWidget(QWidget *parent)
 
     setEnableAction(EDITOR, false);
     setEnableAction(SAVE, false);
+    setEnableAction(SAVE_AS, false);
     setEnableAction(CLOSE, false);
+    setEnableAction(PLAYER, false);
+    installEventFilter(this);
+
+
 }
 
 MainWidget::~MainWidget()
 {
 
+}
+
+bool MainWidget::eventFilter(QObject *watched, QEvent *event)
+{
+    if (event->type() == QEvent::KeyPress) {
+
+        QKeyEvent *e = static_cast<QKeyEvent *> (event);
+
+        if (e->key() == Qt::Key_Space) {
+            slotPlayer();
+            return true;
+        }
+    }
+    return false;
+}
+
+void MainWidget::dragEnterEvent(QDragEnterEvent *event)
+{
+    if (event->mimeData()->hasFormat("text/uri-list"))
+        event->acceptProposedAction();
+    qDebug()<< "enter drag";
+}
+
+
+void MainWidget::dropEvent(QDropEvent *event)
+{
+    qDebug()<< "drop event";
+    auto urls = event->mimeData()->urls();
+    if (urls.size() != 1) {
+        QMessageBox::information(this, "Помилка", "Перетягніть тільки один файл");
+        return;
+    }
+    else {
+        openFile(urls.first().toLocalFile());
+    }
 }
 
 void MainWidget::slotButtonSelectFile()
@@ -96,6 +126,12 @@ void MainWidget::slotButtonOpenDialogDelectFile()
 void MainWidget::slotDecoderBufferReady()
 {
     auto buffer = decoder->read();
+    if (buffer.format().channelCount() != 2 || buffer.format().sampleSize() != 2) {
+        qDebug() << buffer.format().channelCount() << buffer.format().sampleSize() ;
+        QMessageBox::information(nullptr, "error", "");
+        decoder->blockSignals(true);
+        decoder->stop();
+    }
     readfilesize += (buffer.byteCount() / buffer.format().channelCount() / (buffer.format().sampleSize() / 8));
     readfile.push_back(std::move(buffer));
 }
@@ -104,6 +140,12 @@ void MainWidget::slotAudioDecodeFinish()
 {
     qDebug() << "MainWidget::slotAudioDecodeFinish(): ";
     qDebug() << readfile.front().format().sampleSize();
+
+    setEnableAction(EDITOR, true);
+    setEnableAction(SAVE, true);
+    setEnableAction(SAVE_AS, true);
+    setEnableAction(CLOSE, true);
+    setEnableAction(PLAYER, true);
 
     drawView->setAudioBufferList(readfile);
 }
@@ -117,67 +159,26 @@ void MainWidget::slotOpen() {
         qDebug() << "can't open file: " << filepath;
         return;
     }
-
-    setEnableAction(EDITOR, true);
-    setEnableAction(SAVE, true);
-    setEnableAction(CLOSE, true);
-
-    fpath = filepath;
-
-    readfile.clear();
-
-    decoder->setSourceFilename(filepath);
-    decoder->start();
+    openFile(filepath);
 }
 
 void MainWidget::slotSave() {
 
     qDebug() << SAVE;
+    saveFile(fpath);
+}
 
-    QString filepath = QFileDialog::getSaveFileName();
+void MainWidget::slotSaveAs()
+{
+    qDebug() << SAVE_AS;
+
+    QString filepath = QFileDialog::getSaveFileName(this, "", "", "Audio Files (*.wav)");
 
     if (filepath.isEmpty())
         return;
 
-    QFile file(filepath);
+    saveFile(filepath);
 
-    if (!file.open(QIODevice::WriteOnly)) {
-        QMessageBox::information(this, "Помилка", "Неможливо відкрити файл для запису.");
-        return;
-    }
-
-    size_t szfile = 0;
-
-    file.seek(sizeof(WaveHead));
-
-    for (const auto simpleBuffer : drawView->getBuffer()) {
-        szfile += simpleBuffer.byteCount();
-        file.write(static_cast<const char *>(simpleBuffer.data()), simpleBuffer.byteCount());
-    }
-
-    file.reset();
-
-    const QAudioFormat format = drawView->getBuffer().front().format();
-
-    WaveHead head;
-    strncpy(head.chunkId, "RIFF", head.lenstr);
-    head.chunkSize = szfile + sizeof(WaveHead) - sizeof(head.chunkSize) - sizeof(head.chunkId);
-    strncpy(head.format, "WAVE", head.lenstr);
-    strncpy(head.subchunk1Id, "fmt ", head.lenstr);
-    head.subchunk1Size = 16; // for PCM;
-    head.audioFormat = 1; // linear quantum
-    head.numChannels = format.channelCount();
-    head.sampleRate = format.sampleRate();
-    head.byteRate = format.sampleRate() * format.channelCount() * format.sampleSize() / 8;
-    head.blockAlign = format.channelCount() * format.sampleSize() / 8;
-    head.bitsPerSample = format.sampleSize();
-    strncpy(head.subchunk2Id, "data", head.lenstr);
-    head.subchunk2Size = szfile;
-
-    file.write((const char *)&head, sizeof(head));
-
-    file.flush();
-    file.close();
 }
 
 void MainWidget::slotClose() {
@@ -187,12 +188,16 @@ void MainWidget::slotClose() {
     drawView->refresh();
     setEnableAction(EDITOR, false);
     setEnableAction(SAVE, false);
+    setEnableAction(SAVE_AS, false);
     setEnableAction(CLOSE, false);
+    setEnableAction(PLAYER, false);
 }
 
-void MainWidget::slotExit() {
-    qDebug() << EXIT;
-    QApplication::exit();
+void MainWidget::slotPlayer()
+{
+    saveFile(getPlayerFilePath());
+    player->setSource(getPlayerFilePath());
+    player->show();
 }
 
 void MainWidget::slotChangeScaleW(float scale)
@@ -281,6 +286,23 @@ void MainWidget::slotSinosyde()
             this,    SLOT(slotAcceptSinosyde(bool, std::map<QString, float>)));
 }
 
+void MainWidget::slotCut()
+{
+    qDebug() << CUT;
+
+    Effects::Cut(drawView->getBuffer(), drawView->getStartSelect(), drawView->getEndSelect());
+
+    drawView->refresh();
+}
+
+void MainWidget::slotCrop()
+{
+    qDebug() << CROP;
+
+    Effects::Crop(drawView->getBuffer(), drawView->getStartSelect(), drawView->getEndSelect());
+    drawView->refresh();
+}
+
 /// ACCEPTS
 void MainWidget::slotAcceptNormalize(bool isAllFile, std::map<QString, float> values)
 {
@@ -337,6 +359,7 @@ void MainWidget::slotAcceptReversX(bool isAllFile, std::map<QString, float> valu
                       isAllFile ? -1 : drawView->getEndSelect());
 
     drawView->refresh();
+
 }
 
 void MainWidget::slotAcceptNoiseLog(bool isAllFile, std::map<QString, float> values)
@@ -347,11 +370,11 @@ void MainWidget::slotAcceptNoiseLog(bool isAllFile, std::map<QString, float> val
                               isAllFile ? -1 : drawView->getEndSelect());
 
     drawView->refresh();
+
 }
 
 void MainWidget::slotAcceptSinosyde(bool isAllFile, std::map<QString, float> values)
 {
-
     Effects::Sinosyde(drawView->getBuffer(),
                       values[FORCE],
                       values[AMPLITUDE],
@@ -362,18 +385,75 @@ void MainWidget::slotAcceptSinosyde(bool isAllFile, std::map<QString, float> val
     drawView->refresh();
 }
 
+void MainWidget::saveForPlayer()
+{
+    saveFile(FOR_PLAYER_SOURCE);
+}
+
+void MainWidget::openFile(QString path)
+{
+    fpath = path;
+
+    readfile.clear();
+
+    decoder->setSourceFilename(fpath);
+    decoder->start();
+}
+
+void MainWidget::saveFile(QString path)
+{
+    QFile file(path);
+
+    if (!file.open(QIODevice::WriteOnly)) {
+        QMessageBox::information(this, "Помилка", "Неможливо відкрити файл для запису.");
+        return;
+    }
+
+    size_t szfile = 0;
+
+    file.seek(sizeof(WaveHead));
+
+    for (const auto simpleBuffer : drawView->getBuffer()) {
+        szfile += simpleBuffer.byteCount();
+        file.write(static_cast<const char *>(simpleBuffer.data()), simpleBuffer.byteCount());
+    }
+
+    file.reset();
+
+    const QAudioFormat format = drawView->getBuffer().front().format();
+
+    WaveHead head;
+    strncpy(head.chunkId, "RIFF", head.lenstr);
+    head.chunkSize = szfile + sizeof(WaveHead) - sizeof(head.chunkSize) - sizeof(head.chunkId);
+    strncpy(head.format, "WAVE", head.lenstr);
+    strncpy(head.subchunk1Id, "fmt ", head.lenstr);
+    head.subchunk1Size = 16; // for PCM;
+    head.audioFormat = 1; // linear quantum
+    head.numChannels = format.channelCount();
+    head.sampleRate = format.sampleRate();
+    head.byteRate = format.sampleRate() * format.channelCount() * format.sampleSize() / 8;
+    head.blockAlign = format.channelCount() * format.sampleSize() / 8;
+    head.bitsPerSample = format.sampleSize();
+    strncpy(head.subchunk2Id, "data", head.lenstr);
+    head.subchunk2Size = szfile;
+
+    file.write((const char *)&head, sizeof(head));
+
+    file.flush();
+    file.close();
+}
 
 void MainWidget::initMenuBar()
 {
-    menu = new QMenuBar(this);
-
+    QMenu *menuFile = new QMenu(MENU_FILE, this);
     auto actOpen  = new QAction(OPEN, this);
     auto actClose = new QAction(CLOSE,this);
     auto actSave  = new QAction(SAVE, this);
-    auto actExit  = new QAction(EXIT, this);
+    auto actSaveAs= new QAction(SAVE_AS, this);
 
-    menu->addActions({actOpen, actClose, actSave, actExit});
-    menu->addSeparator();
+    mActions = QList<QAction *>{actOpen, actClose, actSave, actSaveAs};
+
+    menuFile->addActions(mActions);
 
 
     QMenu *editorMenu = new QMenu(EDITOR, this);
@@ -384,7 +464,25 @@ void MainWidget::initMenuBar()
     auto actReversY   = new QAction(REVERS_Y, this);
     auto actNoiseLog  = new QAction(NOISE_LOG, this);
     auto actSinosyde  = new QAction(SINOSYDE, this);
-    editorMenu->addActions({actNormalize, actFadeIn, actFadeOut, actReversX, actReversY, actNoiseLog, actSinosyde});
+    auto actCut       = new QAction(CUT, this);
+    auto actCrop      = new QAction(CROP, this);
+
+    editorMenu->addActions({actNormalize,
+                            actFadeIn,
+                            actFadeOut,
+                            actReversX,
+                            actReversY,
+                            actNoiseLog,
+                            actSinosyde,
+                            actCut,
+                            actCrop});
+
+    auto actPlayer = new QAction(PLAYER, this);
+
+    menu = new QMenuBar(this);
+    menu->addMenu(menuFile);
+    menu->addAction(actPlayer);
+    menu->addMenu(editorMenu);
 
     connect(actNormalize, SIGNAL(triggered(bool)), this, SLOT(slotNormalize()));
     connect(actFadeIn,    SIGNAL(triggered(bool)), this, SLOT(slotFadeIn()));
@@ -393,63 +491,27 @@ void MainWidget::initMenuBar()
     connect(actReversY,   SIGNAL(triggered(bool)), this, SLOT(slotReversY()));
     connect(actNoiseLog,  SIGNAL(triggered(bool)), this, SLOT(slotNoiseLog()));
     connect(actSinosyde,  SIGNAL(triggered(bool)), this, SLOT(slotSinosyde()));
+    connect(actCut,       SIGNAL(triggered(bool)), this, SLOT(slotCut()));
+    connect(actCrop,      SIGNAL(triggered(bool)), this, SLOT(slotCrop()));
 
-    menu->addMenu(editorMenu);
 
-    connect(actOpen,  SIGNAL(triggered(bool)), this, SLOT(slotOpen()));
-    connect(actClose, SIGNAL(triggered(bool)), this, SLOT(slotClose()));
-    connect(actSave,  SIGNAL(triggered(bool)), this, SLOT(slotSave()));
-    connect(actExit,  SIGNAL(triggered(bool)), this, SLOT(slotExit()));
+    connect(actOpen,   SIGNAL(triggered(bool)), this, SLOT(slotOpen()));
+    connect(actClose,  SIGNAL(triggered(bool)), this, SLOT(slotClose()));
+    connect(actSave,   SIGNAL(triggered(bool)), this, SLOT(slotSave()));
+    connect(actSaveAs, SIGNAL(triggered(bool)), this, SLOT(slotSaveAs()));
+    connect(actPlayer, SIGNAL(triggered(bool)), this, SLOT(slotPlayer()));
 
     setMenuBar(menu);
 }
 
 void MainWidget::setEnableAction(QString action, bool enable)
 {
-    for(QAction *act : menu->actions()) {
-        if (act->text() == action) {
-            act->setEnabled(enable);
-            break;
+    for (auto lists : {menu->actions(), mActions}){
+        for(QAction *act : lists) {
+            if (act->text() == action) {
+                act->setEnabled(enable);
+                break;
+            }
         }
     }
-}
-
-WaveHead MainWidget::getHeadForFile(const AudioBuffersSimple &buffer)
-{
-    size_t szfile = 0;
-
-    for (const auto simpleBuffer : buffer)
-        szfile += simpleBuffer.byteCount();
-
-    const QAudioFormat format = buffer.front().format();
-
-    WaveHead head;
-    strcpy(head.chunkId, "RIFF");
-    head.chunkSize = szfile + sizeof(WaveHead) - sizeof(head.chunkSize) - sizeof(head.chunkId);
-    strcpy(head.format, "WAVE");
-    strcpy(head.subchunk1Id, "fmt ");
-    head.subchunk1Size = 16; // for PCM;
-    head.audioFormat = 1; // linear quantum
-    head.numChannels = format.channelCount();
-    head.sampleRate = format.sampleRate();
-    head.byteRate = format.sampleRate() * format.channelCount() * format.sampleSize() / 8;
-    head.blockAlign = format.channelCount() * format.sampleSize() / 8;
-    head.bitsPerSample = format.sampleSize();
-    strcpy(head.subchunk2Id, "data");
-    head.subchunk2Size = szfile;
-
-    QFile fl("/home/heart/Desktop/debug-file.wav");
-
-    if (!fl.open(QIODevice::WriteOnly)) {
-        qDebug() << "Can't open file debug-file.wav";
-        std::terminate();
-    }
-
-    fl.write((const char *)&head, sizeof(head));
-
-    for (const auto &simpleBuffer : buffer)
-        fl.write(static_cast<const char *>(simpleBuffer.data()), simpleBuffer.byteCount());
-
-    fl.flush();
-    fl.close();
 }
