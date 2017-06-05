@@ -6,16 +6,6 @@
 typedef signed short value_t;
 typedef QList<QAudioBuffer> AudioBuffersSimple;
 
-
-/********************************
- *
- *
- *
- *
- *
- *
- ********************************/
-
 class AudioBuffers : public AudioBuffersSimple
 {
 public:
@@ -30,16 +20,6 @@ public:
 
 private:
     size_t audioSize = 0;
-};
-
-
-
-class AudioBuffersRAM : public AudioBuffers
-{
-public:
-    AudioBuffersRAM(const AudioBuffers &buffers);
-    void setBuffer(const AudioBuffers &buffers);
-    value_t &operator [](size_t pos);
 };
 
 struct WaveHead {

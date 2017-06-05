@@ -3,7 +3,6 @@
 
 #include <QtWidgets>
 #include <QtMultimedia>
-#include "PCMAudioDevice.h"
 #include "AudioUtilityes.h"
 #include "Effects.h"
 
@@ -15,7 +14,6 @@ public:
     void setAudioBufferList(const AudioBuffersSimple &abuff);
     void resetBuffer();
     void refresh();
-    void playing();
 
     void setScaleW(float scale) { scaleX = scale; refresh(); }
     void setScaleH(float scale) { scaleY = scale; refresh(); }
@@ -28,8 +26,6 @@ public:
     
 protected:
     virtual void paintEvent(QPaintEvent *event);
-//    virtual void keyPressEvent(QKeyEvent *event);
-//    void keyPressEvent(QKeyEvent *event);
 
 private:
     AudioBuffersSimple audioBuffer;
@@ -48,7 +44,6 @@ protected:
     virtual void mousePressEvent(QMouseEvent *event);
     virtual void mouseMoveEvent(QMouseEvent *event);
     virtual void mouseReleaseEvent(QMouseEvent *event);
-    virtual void mouseDoubleClickEvent(QMouseEvent *event);
 
 };
 

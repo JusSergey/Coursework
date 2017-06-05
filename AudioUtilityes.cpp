@@ -1,6 +1,4 @@
 #include "AudioUtilityes.h"
-#include <iostream>
-using std::cout;
 
 AudioBuffers::AudioBuffers(const AudioBuffersSimple &lst) : AudioBuffersSimple(lst), audioSize(0)
 {
@@ -27,27 +25,3 @@ void AudioBuffers::updateAudioSize()
         audioSize += obj.byteCount() / sizeof(value_t);
 }
 
-
-//////////////////////////////////
-
-
-AudioBuffersRAM::AudioBuffersRAM(const AudioBuffers &buffers) : AudioBuffers(buffers)
-{
-}
-
-value_t &AudioBuffersRAM::operator [](size_t pos)
-{
-    size_t idx = 0;
-
-    for (auto &obj : *this) {
-
-        idx += obj.byteCount() / sizeof(value_t);
-
-        if (idx >= pos){
-            return ((value_t*)obj.data())[idx - pos - 1];
-        }
-    }
-
-    throw std::out_of_range("AudioBuffersRAM::operator [](size_t pos) : out_of_range");
-
-}

@@ -94,44 +94,23 @@ bool MainWidget::eventFilter(QObject *watched, QEvent *event)
     return false;
 }
 
-void MainWidget::dragEnterEvent(QDragEnterEvent *event)
-{
-    if (event->mimeData()->hasFormat("text/uri-list"))
-        event->acceptProposedAction();
-    qDebug()<< "enter drag";
-}
-
-
-void MainWidget::dropEvent(QDropEvent *event)
-{
-    qDebug()<< "drop event";
-    auto urls = event->mimeData()->urls();
-    if (urls.size() != 1) {
-        QMessageBox::information(this, "Помилка", "Перетягніть тільки один файл");
-        return;
-    }
-    else {
-        openFile(urls.first().toLocalFile());
-    }
-}
-
-void MainWidget::slotButtonSelectFile()
-{
-}
-
-void MainWidget::slotButtonOpenDialogDelectFile()
+void MainWidget::slotButtonOpenDialogSelectFile()
 {
 }
 
 void MainWidget::slotDecoderBufferReady()
 {
     auto buffer = decoder->read();
-    if (buffer.format().channelCount() != 2 || buffer.format().sampleSize() != 2) {
-        qDebug() << buffer.format().channelCount() << buffer.format().sampleSize() ;
-        QMessageBox::information(nullptr, "error", "");
-        decoder->blockSignals(true);
-        decoder->stop();
+
+    if ((buffer.format().channelCount() != 2 || buffer.format().sampleSize() != 16)) {
+        if (buffer.format().channelCount() > 0) {
+            decoder->blockSignals(false);
+            decoder->stop();
+            QMessageBox::information(nullptr, "Помилка", "Звук повинен бути: стерео(2 канали), та глибиною 16 біт.");
+        }
+        return;
     }
+
     readfilesize += (buffer.byteCount() / buffer.format().channelCount() / (buffer.format().sampleSize() / 8));
     readfile.push_back(std::move(buffer));
 }
@@ -153,6 +132,7 @@ void MainWidget::slotAudioDecodeFinish()
 void MainWidget::slotOpen() {
     qDebug() << OPEN;
 
+    player->slotStop();
     QString filepath = QFileDialog::getOpenFileName(this, "", "", "Audio Files (*.wav *.mp3)");
 
     if (!QFileInfo(filepath).isFile()) {
@@ -181,11 +161,18 @@ void MainWidget::slotSaveAs()
 
 }
 
-void MainWidget::slotClose() {
+void MainWidget::slotClose()
+{
     qDebug() << CLOSE;
+
+    player->slotStop();
+
     readfilesize = 0;
+
     drawView->resetBuffer();
+
     drawView->refresh();
+
     setEnableAction(EDITOR, false);
     setEnableAction(SAVE, false);
     setEnableAction(SAVE_AS, false);
@@ -244,7 +231,7 @@ void MainWidget::slotFadeOut()
             this,    SLOT(slotAcceptFadeOut(bool, std::map<QString, float>)));
 }
 
-void MainWidget::slotReversY()
+void MainWidget::slotReverseY()
 {
     qDebug() << REVERS_Y;
 
@@ -252,16 +239,16 @@ void MainWidget::slotReversY()
     setting->show();
 
     connect(setting, SIGNAL(signalClickedButtonOk(bool, std::map<QString, float>)),
-            this,    SLOT(slotAcceptReversY(bool,std::map<QString, float>)));
+            this,    SLOT(slotAcceptReverseY(bool,std::map<QString, float>)));
 }
 
-void MainWidget::slotReversX()
+void MainWidget::slotReverseX()
 {
     auto setting = new SettingEffect({}, nullptr);
     setting->show();
 
     connect(setting, SIGNAL(signalClickedButtonOk(bool, std::map<QString, float>)),
-            this,    SLOT(slotAcceptReversX(bool,std::map<QString, float>)));
+            this,    SLOT(slotAcceptReverseX(bool,std::map<QString, float>)));
 }
 
 void MainWidget::slotNoiseLog()
@@ -275,7 +262,7 @@ void MainWidget::slotNoiseLog()
             this,    SLOT(slotAcceptNoiseLog(bool, std::map<QString, float>)));
 }
 
-void MainWidget::slotSinosyde()
+void MainWidget::slotSinusoidal()
 {
     qDebug() << SINOSYDE;
 
@@ -283,7 +270,7 @@ void MainWidget::slotSinosyde()
     setting->show();
 
     connect(setting, SIGNAL(signalClickedButtonOk(bool, std::map<QString, float>)),
-            this,    SLOT(slotAcceptSinosyde(bool, std::map<QString, float>)));
+            this,    SLOT(slotAcceptSinusoidal(bool, std::map<QString, float>)));
 }
 
 void MainWidget::slotCut()
@@ -339,7 +326,7 @@ void MainWidget::slotAcceptFadeOut(bool isAllFile, std::map<QString, float> valu
     drawView->refresh();
 }
 
-void MainWidget::slotAcceptReversY(bool isAllFile, std::map<QString, float> values)
+void MainWidget::slotAcceptReverseY(bool isAllFile, std::map<QString, float> values)
 {
     Q_UNUSED(values)
 
@@ -350,7 +337,7 @@ void MainWidget::slotAcceptReversY(bool isAllFile, std::map<QString, float> valu
     drawView->refresh();
 }
 
-void MainWidget::slotAcceptReversX(bool isAllFile, std::map<QString, float> values)
+void MainWidget::slotAcceptReverseX(bool isAllFile, std::map<QString, float> values)
 {
     Q_UNUSED(values)
 
@@ -373,9 +360,9 @@ void MainWidget::slotAcceptNoiseLog(bool isAllFile, std::map<QString, float> val
 
 }
 
-void MainWidget::slotAcceptSinosyde(bool isAllFile, std::map<QString, float> values)
+void MainWidget::slotAcceptSinusoidal(bool isAllFile, std::map<QString, float> values)
 {
-    Effects::Sinosyde(drawView->getBuffer(),
+    Effects::Sinusoidal(drawView->getBuffer(),
                       values[FORCE],
                       values[AMPLITUDE],
                       values[HZ],
@@ -487,10 +474,10 @@ void MainWidget::initMenuBar()
     connect(actNormalize, SIGNAL(triggered(bool)), this, SLOT(slotNormalize()));
     connect(actFadeIn,    SIGNAL(triggered(bool)), this, SLOT(slotFadeIn()));
     connect(actFadeOut,   SIGNAL(triggered(bool)), this, SLOT(slotFadeOut()));
-    connect(actReversX,   SIGNAL(triggered(bool)), this, SLOT(slotReversX()));
-    connect(actReversY,   SIGNAL(triggered(bool)), this, SLOT(slotReversY()));
+    connect(actReversX,   SIGNAL(triggered(bool)), this, SLOT(slotReverseX()));
+    connect(actReversY,   SIGNAL(triggered(bool)), this, SLOT(slotReverseY()));
     connect(actNoiseLog,  SIGNAL(triggered(bool)), this, SLOT(slotNoiseLog()));
-    connect(actSinosyde,  SIGNAL(triggered(bool)), this, SLOT(slotSinosyde()));
+    connect(actSinosyde,  SIGNAL(triggered(bool)), this, SLOT(slotSinusoidal()));
     connect(actCut,       SIGNAL(triggered(bool)), this, SLOT(slotCut()));
     connect(actCrop,      SIGNAL(triggered(bool)), this, SLOT(slotCrop()));
 

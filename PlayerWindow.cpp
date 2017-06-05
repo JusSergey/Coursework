@@ -12,7 +12,6 @@ PlayerWindow::PlayerWindow(QWidget *parent) : QWidget(parent)
     lButtons->addWidget(pPause);
 
     pSlider = new QSlider(Qt::Orientation::Horizontal, this);
-//    pSlider->setRange(0, 100);
     auto lAll = new QVBoxLayout;
     lAll->addWidget(pSlider);
     lAll->addLayout(lButtons);

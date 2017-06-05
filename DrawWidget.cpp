@@ -27,10 +27,6 @@ void DrawWidget::refresh()
     repaint();
 }
 
-void DrawWidget::playing()
-{
-
-}
 
 real DrawWidget::getStartSelect() const
 {
@@ -131,13 +127,6 @@ void DrawWidget::paintEvent(QPaintEvent *event)
     }
 }
 
-//void DrawWidget::keyPressEvent(QKeyEvent *event)
-//{
-//    if (event->key() == Qt::Key::Key_Space) {
-//        qDebug() << "Press Enter";
-//    }
-//}
-
 void DrawWidget::mousePressEvent(QMouseEvent *event)
 {
     setFocus();
@@ -174,17 +163,4 @@ void DrawWidget::mouseReleaseEvent(QMouseEvent *event)
         selectTo = event->pos().x();
 
 
-}
-
-void DrawWidget::mouseDoubleClickEvent(QMouseEvent *event)
-{
-    if (event->button() == Qt::RightButton) {
-        selectIn = 0;
-        selectTo = 0;
-
-        for (const QAudioBuffer &buff : audioBuffer)
-            selectTo += buff.byteCount() / buff.format().channelCount() / sizeof(value_t);
-
-        refresh();
-    }
 }

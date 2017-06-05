@@ -1,12 +1,10 @@
 #ifndef FUNCTIONS_H
 #define FUNCTIONS_H
 
-#include "PCMAudioDevice.h"
 #include "AudioUtilityes.h"
 #include <QtWidgets>
 #include <QtMultimedia>
 
-//typedef int16_t type;
 typedef double real;
 
 class Effects
@@ -20,7 +18,7 @@ public:
 
     static void NoiseLogarithmic(AudioBuffersSimple &buffer, float force, real in, real to);
 
-    static void Sinosyde(AudioBuffersSimple &buffer, float force, float ampl, float hz, real in, real to);
+    static void Sinusoidal(AudioBuffersSimple &buffer, float force, float ampl, float hz, real in, real to);
 
     static void Cut(AudioBuffersSimple &buffer, real in, real to);
     static void Crop(AudioBuffersSimple &buffer, real in, real to);

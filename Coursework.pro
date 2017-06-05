@@ -26,7 +26,6 @@ DEFINES += QT_DEPRECATED_WARNINGS
 SOURCES += main.cpp\
         MainWidget.cpp \
     DrawWidget.cpp \
-    PCMAudioDevice.cpp \
     DirectorView.cpp \
     Effects.cpp \
     SettingEffect.cpp \
@@ -35,7 +34,6 @@ SOURCES += main.cpp\
 
 HEADERS  += MainWidget.h \
     DrawWidget.h \
-    PCMAudioDevice.h \
     DirectorView.h \
     Effects.h \
     SettingEffect.h \

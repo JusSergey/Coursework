@@ -30,13 +30,10 @@ private:
 
 protected:
     virtual bool eventFilter(QObject *watched, QEvent *event);
-    virtual void dragEnterEvent(QDragEnterEvent *event);
-    virtual void dropEvent(QDropEvent *event);
 
 private slots:
     // File Action Slots
-    void slotButtonSelectFile();
-    void slotButtonOpenDialogDelectFile();
+    void slotButtonOpenDialogSelectFile();
     void slotDecoderBufferReady();
     void slotAudioDecodeFinish();
 
@@ -55,10 +52,10 @@ private slots:
     void slotNormalize();
     void slotFadeIn();
     void slotFadeOut();
-    void slotReversY();
-    void slotReversX();
+    void slotReverseY();
+    void slotReverseX();
     void slotNoiseLog();
-    void slotSinosyde();
+    void slotSinusoidal();
     void slotCut();
     void slotCrop();
 
@@ -66,10 +63,10 @@ private slots:
     void slotAcceptNormalize(bool isAllFile, std::map<QString, float> values);
     void slotAcceptFadeIn(bool isAllFile, std::map<QString, float> values);
     void slotAcceptFadeOut(bool isAllFile, std::map<QString, float> values);
-    void slotAcceptReversY(bool isAllFile, std::map<QString, float> values);
-    void slotAcceptReversX(bool isAllFile, std::map<QString, float> values);
+    void slotAcceptReverseY(bool isAllFile, std::map<QString, float> values);
+    void slotAcceptReverseX(bool isAllFile, std::map<QString, float> values);
     void slotAcceptNoiseLog(bool isAllFile, std::map<QString, float> values);
-    void slotAcceptSinosyde(bool isAllFile, std::map<QString, float> values);
+    void slotAcceptSinusoidal(bool isAllFile, std::map<QString, float> values);
 
 private:
     void saveForPlayer();

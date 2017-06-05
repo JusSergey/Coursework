@@ -20,12 +20,12 @@ private:
     QTimer       *timer;
 
 
-signals:
-
-private slots:
+public slots:
     void slotPlay();
     void slotPause();
     void slotStop();
+
+private slots:
     void slotTimeout();
     void slotSliderMove();
 
