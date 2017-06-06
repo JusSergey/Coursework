@@ -17,7 +17,7 @@ private:
             QSlider(o, parent),
             changer(nullptr)
         {}
-            QDoubleSpinBox *changer;// = nullptr;
+            QDoubleSpinBox *changer;
     };
 
     struct MDoubleSpinBox : public QDoubleSpinBox {
