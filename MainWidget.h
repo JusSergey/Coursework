@@ -27,13 +27,13 @@ private:
     size_t readfilesize;
     QString fpath;
     QList<QAction *> mActions;
+    bool isOpenFile;
 
 protected:
     virtual bool eventFilter(QObject *watched, QEvent *event);
 
 private slots:
     // File Action Slots
-    void slotButtonOpenDialogSelectFile();
     void slotDecoderBufferReady();
     void slotAudioDecodeFinish();
 
@@ -55,7 +55,7 @@ private slots:
     void slotReverseY();
     void slotReverseX();
     void slotNoiseLog();
-    void slotSinusoidal();
+    void slotPulse();
     void slotCut();
     void slotCrop();
 
@@ -66,7 +66,7 @@ private slots:
     void slotAcceptReverseY(bool isAllFile, std::map<QString, float> values);
     void slotAcceptReverseX(bool isAllFile, std::map<QString, float> values);
     void slotAcceptNoiseLog(bool isAllFile, std::map<QString, float> values);
-    void slotAcceptSinusoidal(bool isAllFile, std::map<QString, float> values);
+    void slotAcceptPulse(bool isAllFile, std::map<QString, float> values);
 
 private:
     void saveForPlayer();

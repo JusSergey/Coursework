@@ -1,8 +1,9 @@
 #include "Effects.h"
 #include <functional>
 
-void loop(const std::function<void(value_t &obj)> &callback, AudioBuffersSimple &buffer, real in, real to) {
 
+void Effects::loop(const std::function<void (value_t &)> &callback, AudioBuffersSimple &buffer, real in, real to)
+{
     int g = 0;
 
     // прохід всього файла
@@ -34,10 +35,8 @@ void loop(const std::function<void(value_t &obj)> &callback, AudioBuffersSimple 
                 if (g >= in) {
                     if (g <= to) {
                         callback( sbuff[i] );
-                    }
-                    else return;
+                    } else return;
                 }
-
             }
         }
     }
@@ -60,7 +59,6 @@ void Effects::Normalize(AudioBuffersSimple &buffer, float ampl, real in, real to
     loop( [&] (value_t &value) {
         value *= scale;
     }, buffer, in, to);
-
 }
 
 void Effects::ReverseX(AudioBuffersSimple &buffer, real in, real to)
@@ -218,7 +216,7 @@ void Effects::NoiseLogarithmic(AudioBuffersSimple &buffer, float force, real in,
     }, buffer, in, to);
 }
 
-void Effects::Sinusoidal(AudioBuffersSimple &buffer, float force, float ampl, float hz, real in, real to)
+void Effects::SinusoidalPulse(AudioBuffersSimple &buffer, float force, float ampl, float hz, real in, real to)
 {
     double i = 0;
 
@@ -234,9 +232,9 @@ void Effects::Sinusoidal(AudioBuffersSimple &buffer, float force, float ampl, fl
     }, buffer, in, to);
 }
 
-void resizing(AudioBuffersSimple &buffer, std::function<bool (size_t a, size_t b, size_t c, size_t d)> cmp, real in, real to) {
+void Effects::resizing(AudioBuffersSimple &buffer, std::function<bool (size_t, size_t, size_t, size_t)> cmp, real in, real to)
+{
     in = in < 0 ? 0 : in;
-
 
     size_t g = 0;
 

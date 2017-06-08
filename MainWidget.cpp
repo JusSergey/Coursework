@@ -20,7 +20,7 @@ constexpr auto REVERS_Y  = "Реверс Y";
 constexpr auto REVERS_X  = "Реверс X";
 
 constexpr auto NOISE_LOG = "Шум";
-constexpr auto SINOSYDE  = "Синус";
+constexpr auto PULSE  = "Пульсація";
 constexpr auto CUT       = "Вирізати";
 constexpr auto CROP      = "Обрізати";
 
@@ -28,13 +28,14 @@ constexpr auto FORCE = "Сила";
 constexpr auto HZ = "Частота";
 constexpr auto AMPLITUDE = "Амплітуда";
 
-QString getPlayerFilePath() {
+QString getPlayerAbsoluteFilePath() {
     return QApplication::applicationDirPath() + FOR_PLAYER_SOURCE;
 }
 
 MainWidget::MainWidget(QWidget *parent)
     : QMainWindow(parent),
       readfilesize(0),
+      isOpenFile(false),
       player(new PlayerWindow)
 {
     initMenuBar();
@@ -82,20 +83,18 @@ MainWidget::~MainWidget()
 
 bool MainWidget::eventFilter(QObject *watched, QEvent *event)
 {
-    if (event->type() == QEvent::KeyPress) {
+    Q_UNUSED(watched);
 
-        QKeyEvent *e = static_cast<QKeyEvent *> (event);
+    if (event->type() == QEvent::KeyPress && isOpenFile) {
 
-        if (e->key() == Qt::Key_Space) {
+        QKeyEvent *keyEvent = static_cast<QKeyEvent *> (event);
+
+        if (keyEvent->key() == Qt::Key_Space) {
             slotPlayer();
             return true;
         }
     }
     return false;
-}
-
-void MainWidget::slotButtonOpenDialogSelectFile()
-{
 }
 
 void MainWidget::slotDecoderBufferReady()
@@ -118,13 +117,13 @@ void MainWidget::slotDecoderBufferReady()
 void MainWidget::slotAudioDecodeFinish()
 {
     qDebug() << "MainWidget::slotAudioDecodeFinish(): ";
-    qDebug() << readfile.front().format().sampleSize();
 
     setEnableAction(EDITOR, true);
     setEnableAction(SAVE, true);
     setEnableAction(SAVE_AS, true);
     setEnableAction(CLOSE, true);
     setEnableAction(PLAYER, true);
+    isOpenFile = true;
 
     drawView->setAudioBufferList(readfile);
 }
@@ -178,22 +177,25 @@ void MainWidget::slotClose()
     setEnableAction(SAVE_AS, false);
     setEnableAction(CLOSE, false);
     setEnableAction(PLAYER, false);
+    isOpenFile = false;
 }
 
 void MainWidget::slotPlayer()
 {
-    saveFile(getPlayerFilePath());
-    player->setSource(getPlayerFilePath());
+    saveFile(getPlayerAbsoluteFilePath());
+    player->setSource(getPlayerAbsoluteFilePath());
     player->show();
 }
 
 void MainWidget::slotChangeScaleW(float scale)
 {
+    qDebug() << scale;
     drawView->setScaleW(scale);
 }
 
 void MainWidget::slotChangeScaleH(float scale)
 {
+    qDebug() << scale;
     drawView->setScaleH(scale);
 }
 
@@ -262,15 +264,15 @@ void MainWidget::slotNoiseLog()
             this,    SLOT(slotAcceptNoiseLog(bool, std::map<QString, float>)));
 }
 
-void MainWidget::slotSinusoidal()
+void MainWidget::slotPulse()
 {
-    qDebug() << SINOSYDE;
+    qDebug() << PULSE;
 
     auto setting = new SettingEffect({FORCE, AMPLITUDE, HZ}, nullptr);
     setting->show();
 
     connect(setting, SIGNAL(signalClickedButtonOk(bool, std::map<QString, float>)),
-            this,    SLOT(slotAcceptSinusoidal(bool, std::map<QString, float>)));
+            this,    SLOT(slotAcceptPulse(bool, std::map<QString, float>)));
 }
 
 void MainWidget::slotCut()
@@ -360,9 +362,9 @@ void MainWidget::slotAcceptNoiseLog(bool isAllFile, std::map<QString, float> val
 
 }
 
-void MainWidget::slotAcceptSinusoidal(bool isAllFile, std::map<QString, float> values)
+void MainWidget::slotAcceptPulse(bool isAllFile, std::map<QString, float> values)
 {
-    Effects::Sinusoidal(drawView->getBuffer(),
+    Effects::SinusoidalPulse(drawView->getBuffer(),
                       values[FORCE],
                       values[AMPLITUDE],
                       values[HZ],
@@ -392,7 +394,8 @@ void MainWidget::saveFile(QString path)
     QFile file(path);
 
     if (!file.open(QIODevice::WriteOnly)) {
-        QMessageBox::information(this, "Помилка", "Неможливо відкрити файл для запису.");
+        QMessageBox::information(this, "Помилка",
+                                 "Неможливо відкрити файл для запису.");
         return;
     }
 
@@ -402,7 +405,8 @@ void MainWidget::saveFile(QString path)
 
     for (const auto simpleBuffer : drawView->getBuffer()) {
         szfile += simpleBuffer.byteCount();
-        file.write(static_cast<const char *>(simpleBuffer.data()), simpleBuffer.byteCount());
+        file.write(static_cast<const char *>
+                   (simpleBuffer.data()), simpleBuffer.byteCount());
     }
 
     file.reset();
@@ -411,14 +415,20 @@ void MainWidget::saveFile(QString path)
 
     WaveHead head;
     strncpy(head.chunkId, "RIFF", head.lenstr);
-    head.chunkSize = szfile + sizeof(WaveHead) - sizeof(head.chunkSize) - sizeof(head.chunkId);
+    head.chunkSize = szfile + sizeof(WaveHead) -
+                     sizeof(head.chunkSize) -
+                     sizeof(head.chunkId);
+
     strncpy(head.format, "WAVE", head.lenstr);
     strncpy(head.subchunk1Id, "fmt ", head.lenstr);
     head.subchunk1Size = 16; // for PCM;
     head.audioFormat = 1; // linear quantum
     head.numChannels = format.channelCount();
     head.sampleRate = format.sampleRate();
-    head.byteRate = format.sampleRate() * format.channelCount() * format.sampleSize() / 8;
+    head.byteRate = format.sampleRate() *
+                    format.channelCount() *
+                    format.sampleSize() / 8;
+
     head.blockAlign = format.channelCount() * format.sampleSize() / 8;
     head.bitsPerSample = format.sampleSize();
     strncpy(head.subchunk2Id, "data", head.lenstr);
@@ -450,7 +460,7 @@ void MainWidget::initMenuBar()
     auto actReversX   = new QAction(REVERS_X, this);
     auto actReversY   = new QAction(REVERS_Y, this);
     auto actNoiseLog  = new QAction(NOISE_LOG, this);
-    auto actSinosyde  = new QAction(SINOSYDE, this);
+    auto actPulse     = new QAction(PULSE, this);
     auto actCut       = new QAction(CUT, this);
     auto actCrop      = new QAction(CROP, this);
 
@@ -460,7 +470,7 @@ void MainWidget::initMenuBar()
                             actReversX,
                             actReversY,
                             actNoiseLog,
-                            actSinosyde,
+                            actPulse,
                             actCut,
                             actCrop});
 
@@ -477,7 +487,7 @@ void MainWidget::initMenuBar()
     connect(actReversX,   SIGNAL(triggered(bool)), this, SLOT(slotReverseX()));
     connect(actReversY,   SIGNAL(triggered(bool)), this, SLOT(slotReverseY()));
     connect(actNoiseLog,  SIGNAL(triggered(bool)), this, SLOT(slotNoiseLog()));
-    connect(actSinosyde,  SIGNAL(triggered(bool)), this, SLOT(slotSinusoidal()));
+    connect(actPulse,     SIGNAL(triggered(bool)), this, SLOT(slotPulse()));
     connect(actCut,       SIGNAL(triggered(bool)), this, SLOT(slotCut()));
     connect(actCrop,      SIGNAL(triggered(bool)), this, SLOT(slotCrop()));
 
@@ -493,7 +503,7 @@ void MainWidget::initMenuBar()
 
 void MainWidget::setEnableAction(QString action, bool enable)
 {
-    for (auto lists : {menu->actions(), mActions}){
+    for (auto lists : {menu->actions(), mActions}) {
         for(QAction *act : lists) {
             if (act->text() == action) {
                 act->setEnabled(enable);

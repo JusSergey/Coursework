@@ -37,7 +37,7 @@ DirectorView::DirectorView(QWidget *parent) : QWidget(parent)
     valueSliderWDT->setRange(MIN_SPIN_W, MAX_SPIN_W);
 
     valueSliderHGT->setSingleStep(0.1);
-    valueSliderWDT->setSingleStep(1);
+    valueSliderWDT->setSingleStep(2);
 
     valueSliderWDT->setFixedWidth(valueSliderWDT->width());
     valueSliderHGT->setFixedWidth(valueSliderWDT->width());

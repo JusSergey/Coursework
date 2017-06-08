@@ -161,6 +161,4 @@ void DrawWidget::mouseReleaseEvent(QMouseEvent *event)
 {
     if (event->button() == Qt::RightButton)
         selectTo = event->pos().x();
-
-
 }
