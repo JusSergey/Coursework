@@ -20,7 +20,7 @@ constexpr auto REVERS_Y  = "Реверс Y";
 constexpr auto REVERS_X  = "Реверс X";
 
 constexpr auto NOISE_LOG = "Шум";
-constexpr auto PULSE  = "Пульсація";
+constexpr auto PULSE     = "Пульсація";
 constexpr auto CUT       = "Вирізати";
 constexpr auto CROP      = "Обрізати";
 
